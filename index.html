@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="theme-color" content="#11111b">
+  <title>Anime After Hours — The Anime Quiz</title>
+  <link rel="preconnect" href="https://cdn.myanimelist.net">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="Anime After Hours home">
+        <span class="brand-mark">✳</span>
+        <span>ANIME <span class="brand-accent">AFTER HOURS</span><small>THE ANIME QUIZ</small></span>
+      </a>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div>
+          <h1>Think you know<br>your <em>anime?</em></h1>
+          <p>One clue. Five possibilities. Can you pick out the right anime?</p>
+        </div>
+      </section>
+
+      <section class="game" aria-label="Anime quiz">
+        <div class="game-topline">
+          <div class="round-label"><span class="round-dot"></span> <span id="round-label">LOADING QUIZ</span></div>
+          <div class="round-label" id="score-label" aria-live="polite">SCORE 0 / 0</div>
+        </div>
+
+        <div class="question-heading">
+          <div>
+            <div class="section-kicker">THE LINEUP <span>✦</span></div>
+            <h2>Which anime is it?</h2>
+            <p>Select your picks. There may be more than one answer.</p>
+          </div>
+          <div class="mode-badge" id="mode-badge"><span>✳</span> <span id="mode-label">LOADING</span></div>
+        </div>
+
+        <div class="anime-grid" id="anime-grid" aria-live="polite"></div>
+
+        <div class="clue-panel">
+          <div class="clue-copy">
+            <div class="section-kicker">THE CLUE <span>✦</span></div>
+            <h3 id="clue-title">Ready when you are.</h3>
+            <p id="clue-hint">Start the quiz to reveal your clue.</p>
+            <p class="question-timer" id="question-timer" role="timer" aria-label="Time remaining" hidden></p>
+            <p class="question-score" id="question-score" aria-live="polite" hidden></p>
+            <button class="primary-button" id="action-button" type="button" disabled>Loading <span>↗</span></button>
+            <button class="secondary-button" id="finish-button" type="button" hidden>Finish game</button>
+          </div>
+          <div class="clue-content" id="clue-content">
+            <div class="clue-placeholder" aria-hidden="true"><span>✳</span> YOUR CLUE AWAITS</div>
+          </div>
+        </div>
+
+        <div class="answer-notes" id="answer-notes" hidden></div>
+        <p class="error-message" id="error-message" role="alert" hidden></p>
+      </section>
+    </main>
+    <footer class="site-footer"><span>QUESTIONS HANDCRAFTED BY A HUMAN. WEBSITE CREATED WITH AI.</span></footer>
+  </div>
+  <dialog class="game-dialog" id="instructions-dialog" aria-labelledby="instructions-title">
+    <div class="section-kicker">WELCOME <span>✦</span></div>
+    <h2 id="instructions-title">How to play</h2>
+    <p>Pick all the anime that match each clue. There may be more than one correct answer.</p>
+    <ul>
+      <li><strong>Music:</strong> listen to a song and identify the anime that use it.</li>
+      <li><strong>Description:</strong> read the description and identify the matching anime. <b>For this edition, descriptions are in Spanish.</b></li>
+      <li><strong>Frames:</strong> watch the images and identify the anime they belong to.</li>
+    </ul>
+    <p>Correct picks earn points, incorrect picks reduce them, and taking longer reduces your score further. You have 45 seconds to score on each question.</p>
+    
+    <button class="primary-button" id="instructions-button" type="button">Let's play <span>→</span></button>
+  </dialog>
+  <dialog class="game-dialog" id="results-dialog" aria-labelledby="results-title">
+    <div class="section-kicker">GAME COMPLETE <span>✦</span></div>
+    <h2 id="results-title">Your score</h2>
+    <p class="results-score" id="results-score"></p>
+    <p id="results-detail"></p>
+    <button class="primary-button" id="restart-button" type="button">Play again <span>→</span></button>
+  </dialog>
+</body>
+</html>
