@@ -9,6 +9,9 @@ const FULL_SCORE_TIME_MS = {
   frames: 7000
 };
 const QUESTION_TIME_LIMIT_MS = 45000;
+const SPREADSHEET_EXPORT_URL = "https://docs.google.com/spreadsheets/d/11yaou7CKAUe7ebrMjAoYG-JCx-pWR0FT2YPAb63tXKs/export?format=csv";
+const QUESTION_SHEET_GID = "2044066971";
+const ANIME_SHEET_GID = "644290686";
 
 const grid = document.getElementById("anime-grid");
 const roundLabel = document.getElementById("round-label");
@@ -431,18 +434,23 @@ function showLoadError(error) {
 
 async function initialize() {
   if (location.protocol === "file:") {
-    showLoadError(new Error("Open this page through a web server to load the CSV automatically."));
+    showLoadError(new Error("Open this page through a web server to load the spreadsheet."));
     return;
   }
   try {
-    const loadCsv = async path => {
-      const response = await fetch(path, { cache: "no-store" });
-      if (!response.ok) throw new Error(`CSV request failed for ${path} (HTTP ${response.status}).`);
+    const loadCsv = async (name, gid) => {
+      let response;
+      try {
+        response = await fetch(`${SPREADSHEET_EXPORT_URL}&gid=${gid}`, { cache: "no-store" });
+      } catch (error) {
+        throw new Error(`Could not download the ${name} sheet. Check your internet connection and spreadsheet sharing settings. ${error.message}`);
+      }
+      if (!response.ok) throw new Error(`Could not download the ${name} sheet (HTTP ${response.status}).`);
       return response.text();
     };
     const [questions, anime] = await Promise.all([
-      loadCsv("source/GuestAnime%20-%20V2.csv"),
-      loadCsv("source/GuestAnime%20-%20Animes.csv")
+      loadCsv("V2", QUESTION_SHEET_GID),
+      loadCsv("Animes", ANIME_SHEET_GID)
     ]);
     loadData(questions, anime);
   } catch (error) {
