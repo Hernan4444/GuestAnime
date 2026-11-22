@@ -1,6 +1,8 @@
 "use strict";
 
 const FRAME_DURATION_MS = 6000;
+const MUSIC_START_WINDOW_SECONDS = 30;
+const DEFAULT_MUSIC_VOLUME = 0.7;
 const MAX_QUESTION_POINTS = 10;
 const MISTAKE_PENALTY = 3;
 const FULL_SCORE_TIME_MS = {
@@ -247,7 +249,13 @@ function startQuestion() {
     const audio = document.createElement("audio");
     audio.controls = true;
     audio.preload = "metadata";
+    audio.volume = DEFAULT_MUSIC_VOLUME;
     audio.src = `source/music/${encodeURIComponent(question.source)}.mp3`;
+    audio.addEventListener("loadedmetadata", () => {
+      if (currentAudio === audio && Number.isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = Math.random() * Math.min(MUSIC_START_WINDOW_SECONDS, audio.duration);
+      }
+    }, { once: true });
     audio.addEventListener("error", () => showError("The audio could not be loaded. Check that the music file is available."));
     clueContent.append(audio);
     currentAudio = audio;
@@ -313,7 +321,7 @@ function startQuestion() {
       countdownTimer = null;
     }
   }, 100);
-  setButton("Show answer", "↗");
+  setButton("Submit & reveal answer", "↗");
 }
 
 function updateQuestionTimer(elapsed) {
