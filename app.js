@@ -17,6 +17,7 @@ const ANIME_SHEET_GID = "644290686";
 
 const grid = document.getElementById("anime-grid");
 const roundLabel = document.getElementById("round-label");
+const modeBadge = document.getElementById("mode-badge");
 const modeLabel = document.getElementById("mode-label");
 const clueTitle = document.getElementById("clue-title");
 const clueHint = document.getElementById("clue-hint");
@@ -40,6 +41,8 @@ let stage = "ready";
 let frameTimer = null;
 let countdownTimer = null;
 let currentAudio = null;
+let preparedFrames = [];
+let preparationId = 0;
 let questionStartedAt = null;
 let totalScoreHundredths = 0;
 let answeredQuestions = 0;
@@ -160,14 +163,18 @@ function validateData() {
 }
 
 function stopClue() {
+  preparationId++;
   clearInterval(frameTimer);
   frameTimer = null;
   clearInterval(countdownTimer);
   countdownTimer = null;
   if (currentAudio) {
     currentAudio.pause();
+    currentAudio.removeAttribute("src");
+    currentAudio.load();
     currentAudio = null;
   }
+  preparedFrames = [];
 }
 
 function setButton(label, symbol) {
@@ -182,6 +189,7 @@ function showQuestion() {
   stage = "ready";
   questionStartedAt = null;
   const question = QUESTIONS[questionIndex];
+  grid.closest(".game").classList.toggle("frames-round", question.type === "frames");
   const choices = [...question.answers, ...question.distractors];
   const fillers = shuffle(Object.keys(ANIME).filter(id => !choices.includes(id)));
   const options = shuffle([...choices, ...fillers.slice(0, 5 - choices.length)]);
@@ -189,6 +197,7 @@ function showQuestion() {
   roundLabel.textContent = `QUESTION ${String(questionIndex + 1).padStart(2, "0")} / ${String(QUESTIONS.length).padStart(2, "0")}`;
   
   modeLabel.textContent = { music: "MUSIC ROUND", description: "DESCRIPTION ROUND", frames: "FRAMES ROUND" }[question.type];
+  modeBadge.dataset.type = question.type;
   grid.replaceChildren();
   options.forEach(id => {
     const card = document.createElement("button");
@@ -220,18 +229,25 @@ function showQuestion() {
     card.append(imageWrap, name);
     grid.append(card);
   });
-  clueTitle.textContent = "Ready when you are.";
-  clueHint.textContent = "Start the quiz to reveal your clue.";
+  clueTitle.textContent = {
+    music: "Listen closely.",
+    description: "Read between the lines.",
+    frames: "Watch the frames."
+  }[question.type];
+  clueHint.textContent = {
+    music: "Play, pause, or seek. The anime may use a different version or cover.",
+    description: "Which story does this sound like?",
+    frames: `A new frame appears every ${FRAME_DURATION_MS / 1000} seconds.`
+  }[question.type];
   clueContent.innerHTML = '<div class="clue-placeholder" aria-hidden="true"><span>✳</span> YOUR CLUE AWAITS</div>';
   notes.replaceChildren();
   notes.hidden = true;
   errorMessage.hidden = true;
   questionScore.hidden = true;
   questionTimer.hidden = true;
-  finishButton.hidden = true;
-  setButton("Start quiz", "↗");
+  finishButton.hidden = answeredQuestions === 0;
   actionButton.hidden = false;
-  actionButton.disabled = false;
+  prepareClue(question);
 }
 
 function showError(message) {
@@ -239,43 +255,84 @@ function showError(message) {
   errorMessage.hidden = false;
 }
 
+function prepareClue(question) {
+  const id = ++preparationId;
+  stage = "loading";
+  errorMessage.hidden = true;
+  actionButton.disabled = true;
+  setButton("Loading clue", "…");
+
+  let loading = Promise.resolve();
+  if (question.type === "music") {
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.preload = "auto";
+    audio.volume = DEFAULT_MUSIC_VOLUME;
+    currentAudio = audio;
+    loading = new Promise((resolve, reject) => {
+      const ready = () => {
+        if (!audio.seeking && audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) resolve();
+      };
+      audio.addEventListener("loadedmetadata", () => {
+        if (Number.isFinite(audio.duration) && audio.duration > 0) {
+          audio.currentTime = Math.random() * Math.min(MUSIC_START_WINDOW_SECONDS, audio.duration);
+        }
+        ready();
+      }, { once: true });
+      audio.addEventListener("seeked", ready);
+      audio.addEventListener("canplaythrough", ready);
+      audio.addEventListener("error", () => {
+        if (stage === "started" && currentAudio === audio) {
+          showError("The audio could not be loaded. Check that the music file is available.");
+        }
+        reject(new Error("The audio could not be loaded. Check that the music file is available."));
+      });
+      audio.src = `source/music/${encodeURIComponent(question.source)}.mp3`;
+      audio.load();
+    });
+  } else if (question.type === "frames") {
+    loading = Promise.all(question.source.map(source => new Promise((resolve, reject) => {
+      const image = new Image();
+      image.addEventListener("load", () => resolve(image), { once: true });
+      image.addEventListener("error", () => reject(new Error("A frame could not be loaded. Check that the image files are available.")), { once: true });
+      image.src = `source/frames/${encodeURIComponent(source)}.jpg`;
+    }))).then(images => {
+      if (id === preparationId) preparedFrames = images;
+    });
+  }
+
+  loading.then(() => {
+    if (id !== preparationId) return;
+    stage = "ready";
+    setButton("Start question", "↗");
+    actionButton.disabled = false;
+  }).catch(error => {
+    if (id !== preparationId) return;
+    stage = "load-error";
+    showError(error.message);
+    setButton("Retry loading", "↻");
+    actionButton.disabled = false;
+  });
+}
+
 function startQuestion() {
   const question = QUESTIONS[questionIndex];
   stage = "started";
+  finishButton.hidden = false;
   clueContent.replaceChildren();
   if (question.type === "music") {
-    clueTitle.textContent = "Listen closely.";
-    clueHint.textContent = "Play, pause, or seek. The anime may use a different version or cover.";
-    const audio = document.createElement("audio");
-    audio.controls = true;
-    audio.preload = "metadata";
-    audio.volume = DEFAULT_MUSIC_VOLUME;
-    audio.src = `source/music/${encodeURIComponent(question.source)}.mp3`;
-    audio.addEventListener("loadedmetadata", () => {
-      if (currentAudio === audio && Number.isFinite(audio.duration) && audio.duration > 0) {
-        audio.currentTime = Math.random() * Math.min(MUSIC_START_WINDOW_SECONDS, audio.duration);
-      }
-    }, { once: true });
-    audio.addEventListener("error", () => showError("The audio could not be loaded. Check that the music file is available."));
+    const audio = currentAudio;
     clueContent.append(audio);
-    currentAudio = audio;
     audio.play().catch(() => {
       if (!audio.error) showError("Playback could not start automatically. Press play on the audio player.");
     });
   } else if (question.type === "description") {
-    clueTitle.textContent = "Read between the lines.";
-    clueHint.textContent = "Which story does this sound like?";
     const quote = document.createElement("blockquote");
     quote.textContent = question.source;
     clueContent.append(quote);
   } else {
-    clueTitle.textContent = "Watch the frames.";
-    clueHint.textContent = `A new frame appears every ${FRAME_DURATION_MS / 1000} seconds.`;
     const frameBox = document.createElement("div");
     frameBox.className = "frame-box";
-    const image = document.createElement("img");
-    image.alt = "Anime clue, frame 1 of 3";
-    image.addEventListener("error", () => showError("The frame could not be loaded. Check that the image file is available."));
     const frameLabel = document.createElement("span");
     frameLabel.className = "frame-label";
     const timer = document.createElement("div");
@@ -283,7 +340,7 @@ function startQuestion() {
     const timerValue = document.createElement("span");
     timerValue.className = "timer-value";
     timer.append(timerValue);
-    frameBox.append(image, frameLabel, timer);
+    frameBox.append(frameLabel, timer);
     clueContent.append(frameBox);
     const startedAt = performance.now();
     let displayedFrame = -1;
@@ -292,8 +349,9 @@ function startQuestion() {
       const frame = Math.min(2, Math.floor(elapsed / FRAME_DURATION_MS));
       if (frame !== displayedFrame) {
         displayedFrame = frame;
-        image.src = `source/frames/${encodeURIComponent(question.source[frame])}.jpg`;
+        const image = preparedFrames[frame];
         image.alt = `Anime clue, frame ${frame + 1} of 3`;
+        frameBox.replaceChildren(image, frameLabel, timer);
         frameLabel.textContent = `FRAME 0${frame + 1} / 03`;
       }
       if (frame === 2) {
@@ -394,6 +452,10 @@ function revealAnswer() {
 
 actionButton.addEventListener("click", () => {
   if (stage === "ready") startQuestion();
+  else if (stage === "load-error") {
+    stopClue();
+    prepareClue(QUESTIONS[questionIndex]);
+  }
   else if (stage === "started") revealAnswer();
   else if (stage === "revealed" && questionIndex < QUESTIONS.length - 1) {
     questionIndex++;
@@ -410,7 +472,7 @@ function updateScore() {
 }
 
 finishButton.addEventListener("click", () => {
-  if (stage !== "revealed") return;
+  if (stage === "finished" || (stage !== "started" && answeredQuestions === 0)) return;
   stopClue();
   stage = "finished";
   resultsScore.textContent = `${formatScore(totalScoreHundredths)} / ${answeredQuestions * MAX_QUESTION_POINTS}`;

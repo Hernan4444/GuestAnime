@@ -20,40 +20,40 @@
     <main>
       <section class="intro">
         <div>
-          <h1>Think you know<br>your <em>anime?</em></h1>
-          <p>One clue. Five possibilities. Can you pick out the right anime?</p>
+          <h1>Think you know your <em>anime?</em></h1>
         </div>
       </section>
 
       <section class="game" aria-label="Anime quiz">
         <div class="game-topline">
           <div class="round-label"><span class="round-dot"></span> <span id="round-label">LOADING QUIZ</span></div>
-          <div class="round-label" id="score-label" aria-live="polite">SCORE 0 / 0</div>
+          <div class="mode-badge" id="mode-badge"><span>✳</span> <span id="mode-label">LOADING</span></div>
+          <div class="score-controls">
+            <div class="round-label" id="score-label" aria-live="polite">SCORE 0 / 0</div>
+            <button class="secondary-button" id="finish-button" type="button" hidden>Finish game</button>
+          </div>
         </div>
-
+        
+        <div class="question-heading">
+          <div>
+            <h2>Which anime is it?</h2>
+            <p>View the clue and click the anime cards to select or deselect them, then submit your picks above. There may be more than one answer.</p>
+          </div>
+        </div>
         <div class="clue-panel">
           <div class="clue-copy">
             <div class="section-kicker">THE CLUE <span>✦</span></div>
-            <h3 id="clue-title">Ready when you are.</h3>
-            <p id="clue-hint">Start the quiz to reveal your clue.</p>
+            <h3 id="clue-title">Loading question...</h3>
+            <p id="clue-hint"></p>
             <p class="question-timer" id="question-timer" role="timer" aria-label="Time remaining" hidden></p>
             <p class="question-score" id="question-score" aria-live="polite" hidden></p>
             <button class="primary-button" id="action-button" type="button" disabled>Loading <span>↗</span></button>
-            <button class="secondary-button" id="finish-button" type="button" hidden>Finish game</button>
           </div>
           <div class="clue-content" id="clue-content">
             <div class="clue-placeholder" aria-hidden="true"><span>✳</span> YOUR CLUE AWAITS</div>
           </div>
         </div>
 
-        <div class="question-heading">
-          <div>
-            <div class="section-kicker">THE LINEUP <span>✦</span></div>
-            <h2>Which anime is it?</h2>
-            <p>Click the anime cards to select or deselect them, then submit your picks above. There may be more than one answer.</p>
-          </div>
-          <div class="mode-badge" id="mode-badge"><span>✳</span> <span id="mode-label">LOADING</span></div>
-        </div>
 
         <div class="anime-grid" id="anime-grid" aria-live="polite"></div>
 
@@ -73,6 +73,7 @@
       <li><strong>Frames:</strong> watch the images and identify the anime they belong to.</li>
     </ul>
     <p>Click “Submit &amp; reveal answer” to submit your picks and see the correct answers. Correct picks earn points, incorrect picks reduce them, and taking longer reduces your score further. You have 45 seconds to score on each question.</p>
+    <p>You can finish at any time after starting a question. Unsubmitted picks do not count toward your score.</p>
     
     <button class="primary-button" id="instructions-button" type="button">Let's play <span>→</span></button>
   </dialog>
