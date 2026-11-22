@@ -29,7 +29,8 @@ try {
                 '^/$|^/index\.html$' { $file = Join-Path $root 'index.html'; $contentType = 'text/html; charset=utf-8'; break }
                 '^/app\.js$' { $file = Join-Path $root 'app.js'; $contentType = 'text/javascript; charset=utf-8'; break }
                 '^/styles\.css$' { $file = Join-Path $root 'styles.css'; $contentType = 'text/css; charset=utf-8'; break }
-                '^/source/GuestAnime\.csv$' { $file = Join-Path $root 'source\GuestAnime.csv'; $contentType = 'text/csv; charset=utf-8'; break }
+                '^/source/GuestAnime - V2\.csv$' { $file = Join-Path $root 'source\GuestAnime - V2.csv'; $contentType = 'text/csv; charset=utf-8'; break }
+                '^/source/GuestAnime - Animes\.csv$' { $file = Join-Path $root 'source\GuestAnime - Animes.csv'; $contentType = 'text/csv; charset=utf-8'; break }
                 '^/source/(music|frames)/([^/\\]+)$' {
                     $folder = $Matches[1]
                     $name = $Matches[2]

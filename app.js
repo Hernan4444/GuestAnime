@@ -82,27 +82,33 @@ function parseCsv(text) {
   return rows;
 }
 
-function loadData(text) {
-  const rows = parseCsv(text);
-  const headers = rows.shift();
-  const required = ["Respuesta", "Distractores", "Tipo", "Fuente", "Comentario Adicional", "MAL", "Name", "Photo"];
-  if (!headers || required.some(name => !headers.includes(name))) {
-    throw new Error("The CSV is missing required columns.");
+function loadData(questionText, animeText) {
+  const questionRows = parseCsv(questionText);
+  const questionHeaders = questionRows.shift();
+  const questionColumns = ["Respuesta", "Distractores", "Tipo", "Fuente", "Comentario Adicional"];
+  const animeRows = parseCsv(animeText);
+  const animeHeaders = animeRows.shift();
+  const animeColumns = ["MAL", "Name", "Photo"];
+  if (!questionHeaders || questionColumns.some(name => !questionHeaders.includes(name)) ||
+      !animeHeaders || animeColumns.some(name => !animeHeaders.includes(name))) {
+    throw new Error("A CSV is missing required columns.");
   }
-  const column = Object.fromEntries(required.map(name => [name, headers.indexOf(name)]));
+  const questionColumn = Object.fromEntries(questionColumns.map(name => [name, questionHeaders.indexOf(name)]));
+  const animeColumn = Object.fromEntries(animeColumns.map(name => [name, animeHeaders.indexOf(name)]));
   const anime = {};
   const questions = [];
   const splitIds = value => value.split(",").map(item => item.trim()).filter(Boolean);
   const types = { musica: "music", descripcion: "description", frames: "frames" };
-  rows.forEach((row, index) => {
-    const get = name => (row[column[name]] || "").trim();
+  animeRows.forEach((row, index) => {
+    const get = name => (row[animeColumn[name]] || "").trim();
     const id = get("MAL");
-    if (id || get("Name") || get("Photo")) {
-      if (!id || !get("Name") || !get("Photo") || anime[id]) {
-        throw new Error(`CSV row ${index + 2} has an incomplete or duplicate anime.`);
-      }
-      anime[id] = { name: get("Name"), image: get("Photo") };
+    if (!id || !get("Name") || !get("Photo") || anime[id]) {
+      throw new Error(`Anime CSV row ${index + 2} has an incomplete or duplicate anime.`);
     }
+    anime[id] = { name: get("Name"), image: get("Photo") };
+  });
+  questionRows.forEach(row => {
+    const get = name => (row[questionColumn[name]] || "").trim();
     if (get("Respuesta") || get("Distractores") || get("Tipo") || get("Fuente") || get("Comentario Adicional")) {
       const type = types[get("Tipo").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()];
       questions.push({
@@ -116,7 +122,6 @@ function loadData(text) {
   });
   ANIME = anime;
   QUESTIONS = questions;
-  QUESTIONS = shuffle(QUESTIONS);
   validateData();
   questionIndex = 0;
   showQuestion();
@@ -430,9 +435,16 @@ async function initialize() {
     return;
   }
   try {
-    const response = await fetch("source/GuestAnime.csv", { cache: "no-store" });
-    if (!response.ok) throw new Error(`CSV request failed (HTTP ${response.status}).`);
-    loadData(await response.text());
+    const loadCsv = async path => {
+      const response = await fetch(path, { cache: "no-store" });
+      if (!response.ok) throw new Error(`CSV request failed for ${path} (HTTP ${response.status}).`);
+      return response.text();
+    };
+    const [questions, anime] = await Promise.all([
+      loadCsv("source/GuestAnime%20-%20V2.csv"),
+      loadCsv("source/GuestAnime%20-%20Animes.csv")
+    ]);
+    loadData(questions, anime);
   } catch (error) {
     showLoadError(error);
   }
