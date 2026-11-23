@@ -164,6 +164,12 @@ function shuffle(items) {
   return result;
 }
 
+function selectQuestionOptions(question) {
+  const required = [...question.answers, ...question.distractors];
+  const fillers = shuffle(Object.keys(ANIME).filter(id => !required.includes(id)));
+  return shuffle([...required, ...fillers.slice(0, 5 - required.length)]);
+}
+
 function selectQuestions(questions) {
   if (new URLSearchParams(location.search).has("ordered")) return [...questions];
 
@@ -300,9 +306,7 @@ function showQuestion() {
   questionStartedAt = null;
   const question = QUESTIONS[questionIndex];
   grid.closest(".game").classList.toggle("frames-round", question.type === "frames");
-  const choices = [...question.answers, ...question.distractors];
-  const fillers = shuffle(Object.keys(ANIME).filter(id => !choices.includes(id)));
-  const options = shuffle([...choices, ...fillers.slice(0, 5 - choices.length)]);
+  const options = selectQuestionOptions(question);
 
   roundLabel.textContent = `QUESTION ${String(questionIndex + 1).padStart(2, "0")} / ${String(QUESTIONS.length).padStart(2, "0")}`;
 

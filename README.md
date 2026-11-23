@@ -22,7 +22,7 @@ The `FULL_SCORE_TIME_MS` values in `app.js` can be adjusted separately for `musi
 
 Edit the `V2` and `Animes` sheets in the [Google spreadsheet](https://docs.google.com/spreadsheets/d/11yaou7CKAUe7ebrMjAoYG-JCx-pWR0FT2YPAb63tXKs/edit) to change the questions and anime catalog. The browser downloads both sheets as CSV when the game opens; they may have different numbers of rows. The spreadsheet must remain accessible to anyone with the link, without signing in.
 
-- In `V2`, `Respuesta` and `Distractores` are comma-separated anime IDs. Together they must contain no more than five distinct IDs, each present in the anime catalog. Random anime fill any remaining slots.
+- In `V2`, `Respuesta` and `Distractores` are comma-separated anime IDs. Every anime in these two columns is shown; together they must contain no more than five distinct IDs, each present in the anime catalog. Random anime fill any remaining slots. `Otros Distractores` is not used as a required option, though its anime may still be selected randomly from the catalog.
 - In `V2`, `Tipo` is `Musica`, `Descripción`, or `Frames`; `Fuente` is the music filename without `.mp3` in `source/music`, the description text in any language, or three comma-separated frame filenames without `.jpg` in `source/frames`.
 - In `V2`, `Comentario Adicional` is optional text and links displayed with the answer.
 - In `Animes`, `MAL`, `Name`, and `Photo` are the anime ID, name, and image URL.

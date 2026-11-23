@@ -72,6 +72,20 @@ test("each random selection samples from the full dataset", () => {
   assert.ok(second.some(question => !first.includes(question)));
 });
 
+test("question options always include answers and required distractors, then fill randomly", () => {
+  const game = createGame();
+  vm.runInContext("ANIME = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {} }; Math.random = () => 0", game);
+  const selected = vm.runInContext(`selectQuestionOptions({
+    answers: ["1", "2"],
+    distractors: ["3", "4"],
+    otherDistractors: ["5"]
+  })`, game);
+  const options = Array.from(selected);
+  assert.equal(options.length, 5);
+  assert.deepEqual(options.filter(id => ["1", "2", "3", "4"].includes(id)).sort(), ["1", "2", "3", "4"]);
+  assert.deepEqual(options.filter(id => !["1", "2", "3", "4"].includes(id)), ["6"]);
+});
+
 test("ordered mode uses the complete dataset in its original order", () => {
   const game = createGame("?ordered");
   const all = questions({ music: 20, description: 10, frames: 10 });
