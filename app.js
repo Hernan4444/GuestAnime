@@ -27,6 +27,10 @@ const notesText = document.getElementById("answer-notes-text");
 const errorMessage = document.getElementById("error-message");
 const actionButton = document.getElementById("action-button");
 const tutorialButton = document.getElementById("tutorial-button");
+const pageShell = document.querySelector(".page-shell");
+const startGameOverlay = document.getElementById("start-game-overlay");
+const startGameButton = document.getElementById("start-game-button");
+const startGameError = document.getElementById("start-game-error");
 const finishButton = document.getElementById("finish-button");
 const scoreLabel = document.getElementById("score-label");
 const questionScore = document.getElementById("question-score");
@@ -51,6 +55,7 @@ let answeredQuestions = 0;
 let quizLoaded = false;
 let initializationId = 0;
 let tutorialShown = false;
+let gameStarted = false;
 
 function parseCsv(text) {
   const rows = [];
@@ -138,8 +143,12 @@ function loadData(questionText, animeText) {
   validateData();
   quizLoaded = true;
   questionIndex = 0;
-  showQuestion();
-  if (!instructionsDialog.open && !tutorialShown) showTutorial();
+  if (gameStarted) {
+    showQuestion();
+  } else {
+    showDemo();
+    if (!instructionsDialog.open && !tutorialShown) showTutorial(true);
+  }
 }
 
 function shuffle(items) {
@@ -191,22 +200,8 @@ function setButton(label, symbol) {
   actionButton.append(arrow);
 }
 
-function showQuestion() {
-  stopClue();
-  stage = "ready";
-  questionStartedAt = null;
-  const question = QUESTIONS[questionIndex];
-  grid.closest(".game").classList.toggle("frames-round", question.type === "frames");
-  const choices = [...question.answers, ...question.distractors];
-  const fillers = shuffle(Object.keys(ANIME).filter(id => !choices.includes(id)));
-  const options = shuffle([...choices, ...fillers.slice(0, 5 - choices.length)]);
-
-  roundLabel.textContent = `QUESTION ${String(questionIndex + 1).padStart(2, "0")} / ${String(QUESTIONS.length).padStart(2, "0")}`;
-  
-  modeLabel.textContent = { music: "MUSIC ROUND", description: "DESCRIPTION ROUND", frames: "FRAMES ROUND" }[question.type];
-  modeBadge.dataset.type = question.type;
+function renderOptions(options) {
   grid.replaceChildren();
-  grid.classList.toggle("posters-obscured", questionIndex === 0);
   options.forEach(id => {
     const card = document.createElement("button");
     card.type = "button";
@@ -238,6 +233,43 @@ function showQuestion() {
     card.append(imageWrap, name);
     grid.append(card);
   });
+}
+
+function showDemo() {
+  stopClue();
+  stage = "demo";
+  grid.closest(".game").classList.remove("frames-round");
+  roundLabel.textContent = `QUESTION 00 / ${String(QUESTIONS.length).padStart(2, "0")} · DEMO`;
+  modeLabel.textContent = "DEMO ROUND";
+  delete modeBadge.dataset.type;
+  renderOptions(shuffle(Object.keys(ANIME)).slice(0, 5));
+  clueTitle.textContent = "Example clue";
+  clueHint.textContent = "This is a demonstration of the quiz.";
+  clueContent.innerHTML = '<div class="clue-placeholder" aria-hidden="true"><span>✳</span> YOUR CLUE AWAITS</div>';
+  notesText.textContent = "No additional information yet.";
+  errorMessage.hidden = true;
+  questionScore.hidden = true;
+  questionTimer.hidden = true;
+  actionButton.hidden = false;
+  actionButton.disabled = true;
+  setButton("Show clue", "↗");
+}
+
+function showQuestion() {
+  stopClue();
+  stage = "ready";
+  questionStartedAt = null;
+  const question = QUESTIONS[questionIndex];
+  grid.closest(".game").classList.toggle("frames-round", question.type === "frames");
+  const choices = [...question.answers, ...question.distractors];
+  const fillers = shuffle(Object.keys(ANIME).filter(id => !choices.includes(id)));
+  const options = shuffle([...choices, ...fillers.slice(0, 5 - choices.length)]);
+
+  roundLabel.textContent = `QUESTION ${String(questionIndex + 1).padStart(2, "0")} / ${String(QUESTIONS.length).padStart(2, "0")}`;
+
+  modeLabel.textContent = { music: "MUSIC ROUND", description: "DESCRIPTION ROUND", frames: "FRAMES ROUND" }[question.type];
+  modeBadge.dataset.type = question.type;
+  renderOptions(options);
   clueTitle.textContent = {
     music: "Listen closely.",
     description: "Read between the lines.",
@@ -258,14 +290,28 @@ function showQuestion() {
   tutorialButton.disabled = false;
 }
 
-function showTutorial() {
+function setStartGate(visible) {
+  startGameOverlay.hidden = !visible;
+  startGameButton.hidden = !visible;
+  pageShell.inert = visible;
+}
+
+function showTutorial(isDemo = false) {
   tutorialShown = true;
   if (typeof introJs !== "function") {
-    showError("The tutorial could not be loaded. You can still play the quiz.");
+    if (isDemo) {
+      startGameError.textContent = "The tutorial could not be loaded. You can still play the quiz.";
+      startGameError.hidden = false;
+      setStartGate(true);
+      startGameButton.focus();
+    } else {
+      showError("The tutorial could not be loaded. You can still play the quiz.");
+    }
     return;
   }
 
   const actionIntro = {
+    demo: "In a real question, press Show clue to reveal the clue and start the 45-second timer. After choosing, use this button to submit and reveal the answers.",
     loading: "The clue is loading. When it is ready, press Show clue to reveal it and start the 45-second timer.",
     "load-error": "Use this button to retry loading the clue before starting the question.",
     ready: "Press Show clue to reveal the clue and start the 45-second timer. After choosing, use this button to submit and reveal the answers.",
@@ -273,14 +319,16 @@ function showTutorial() {
     revealed: "Use this button to move on to the next question."
   }[stage];
   const steps = [
-    { element: modeBadge, intro: `This shows the type of clue for the current question.${stage === "started" ? " The timer keeps running while the tutorial is open." : ""}` },
+    { element: modeBadge, intro: `${isDemo ? "This is a demo question. " : ""}This shows the type of clue for the current question.${stage === "started" ? " The timer keeps running while the tutorial is open." : ""}` },
     ...(!actionButton.hidden ? [{ element: actionButton, intro: actionIntro }] : []),
     { element: clueContent, intro: "The clue appears here after you start. The clues can be music, descriptions, or frames." },
-    { element: grid, intro: `The five options for each question are shown before it starts. ${questionIndex === 0 ? "For the first question, the images are blurred until you press Show clue; you can review the anime names beforehand." : "We suggest reviewing them before you start."} ${stage === "revealed" ? "The correct answers are highlighted here." : "Click every matching anime: <b>you can select more than one.</b>"}` },
+    { element: grid, intro: `${isDemo ? "These five anime are random examples. " : ""}The five options for each question are shown before it starts. We suggest reviewing them before you start. ${stage === "revealed" ? "The correct answers are highlighted here." : "Click every matching anime: <b>you can select more than one.</b>"}` },
     { element: notes, intro: "After you submit, some questions show additional information and links here to support the answer." },
     { element: document.querySelector(".score-controls"), intro: "Your score appears here. Finish the game at any time." }
   ];
-  if (!actionButton.hidden) {
+  if (isDemo) {
+    steps.push({ element: startGameButton, intro: "Finish the tutorial, then press Start game to begin the first question. Its anime options will be shown before you reveal its clue." });
+  } else if (!actionButton.hidden) {
     steps.push({ element: actionButton, intro: {
       loading: "Review the five anime names while the clue loads, then press Show clue when you are ready.",
       "load-error": "Retry loading the clue, then review the five anime names before starting the question.",
@@ -289,13 +337,25 @@ function showTutorial() {
       revealed: "Press Next question when you are ready to continue."
     }[stage] });
   }
-  introJs().setOptions({
+  const tutorial = introJs().setOptions({
     steps,
     disableInteraction: true,
     exitOnOverlayClick: false,
     showBullets: false,
     doneLabel: "Done"
-  }).start();
+  });
+  if (isDemo) {
+    tutorial.onbeforechange(element => setStartGate(element === startGameButton));
+    tutorial.onexit(() => {
+      setStartGate(true);
+      startGameButton.focus();
+    });
+    tutorial.oncomplete(() => {
+      setStartGate(true);
+      startGameButton.focus();
+    });
+  }
+  tutorial.start();
 }
 
 function showError(message) {
@@ -366,7 +426,6 @@ function prepareClue(question) {
 function startQuestion() {
   const question = QUESTIONS[questionIndex];
   stage = "started";
-  grid.classList.remove("posters-obscured");
   clueContent.replaceChildren();
   if (question.type === "music") {
     const audio = currentAudio;
@@ -534,7 +593,11 @@ document.getElementById("restart-button").addEventListener("click", () => {
   updateScore();
   if (quizLoaded) {
     QUESTIONS = shuffle(QUESTIONS);
-    showQuestion();
+    if (gameStarted) showQuestion();
+    else {
+      showDemo();
+      if (!tutorialShown) showTutorial(true);
+    }
   } else {
     initialize();
   }
@@ -542,9 +605,16 @@ document.getElementById("restart-button").addEventListener("click", () => {
 
 document.getElementById("instructions-button").addEventListener("click", () => {
   instructionsDialog.close();
-  if (quizLoaded && !tutorialShown) showTutorial();
+  if (quizLoaded && !tutorialShown) showTutorial(true);
 });
-tutorialButton.addEventListener("click", showTutorial);
+tutorialButton.addEventListener("click", () => showTutorial());
+startGameButton.addEventListener("click", () => {
+  setStartGate(false);
+  startGameError.hidden = true;
+  gameStarted = true;
+  questionIndex = 0;
+  showQuestion();
+});
 [instructionsDialog, resultsDialog].forEach(dialog => {
   dialog.addEventListener("cancel", event => event.preventDefault());
 });
