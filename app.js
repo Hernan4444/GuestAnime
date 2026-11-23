@@ -5,6 +5,7 @@ const MUSIC_START_WINDOW_SECONDS = 30;
 const DEFAULT_MUSIC_VOLUME = 0.6;
 const MAX_QUESTION_POINTS = 10;
 const MISTAKE_PENALTY = 3;
+const RANDOM_QUESTION_COUNT = 20;
 const FULL_SCORE_TIME_MS = {
   music: 5000,
   description: 10000,
@@ -41,6 +42,7 @@ const resultsScore = document.getElementById("results-score");
 const resultsDetail = document.getElementById("results-detail");
 
 let ANIME = {};
+let ALL_QUESTIONS = [];
 let QUESTIONS = [];
 let questionIndex = 0;
 let stage = "ready";
@@ -141,6 +143,8 @@ function loadData(questionText, animeText) {
   ANIME = anime;
   QUESTIONS = questions;
   validateData();
+  ALL_QUESTIONS = questions;
+  QUESTIONS = selectQuestions(ALL_QUESTIONS);
   quizLoaded = true;
   questionIndex = 0;
   if (gameStarted) {
@@ -158,6 +162,41 @@ function shuffle(items) {
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
+}
+
+function selectQuestions(questions) {
+  if (new URLSearchParams(location.search).has("ordered")) return [...questions];
+
+  const total = Math.min(RANDOM_QUESTION_COUNT, questions.length);
+  const groups = shuffle([...new Set(questions.map(question => question.type))]).map(type => {
+    const items = shuffle(questions.filter(question => question.type === type));
+    const scaledCount = items.length * total;
+    return {
+      items,
+      count: Math.floor(scaledCount / questions.length),
+      remainder: scaledCount % questions.length,
+      weight: 0,
+      drawn: 0
+    };
+  });
+  let remaining = total - groups.reduce((sum, group) => sum + group.count, 0);
+  groups.sort((a, b) => b.remainder - a.remainder);
+  for (const group of groups) {
+    if (!remaining) break;
+    group.count++;
+    remaining--;
+  }
+
+  const selected = [];
+  for (let i = 0; i < total; i++) {
+    for (const group of groups) group.weight += group.count;
+    const next = groups.filter(group => group.drawn < group.count)
+      .reduce((best, group) => !best || group.weight > best.weight ? group : best, null);
+    selected.push(next.items.pop());
+    next.weight -= total;
+    next.drawn++;
+  }
+  return selected;
 }
 
 function validateData() {
@@ -592,7 +631,7 @@ document.getElementById("restart-button").addEventListener("click", () => {
   answeredQuestions = 0;
   updateScore();
   if (quizLoaded) {
-    QUESTIONS = shuffle(QUESTIONS);
+    QUESTIONS = selectQuestions(ALL_QUESTIONS);
     if (gameStarted) showQuestion();
     else {
       showDemo();
