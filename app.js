@@ -2,7 +2,7 @@
 
 const FRAME_DURATION_MS = 6000;
 const MUSIC_START_WINDOW_SECONDS = 30;
-const DEFAULT_MUSIC_VOLUME = 0.7;
+const DEFAULT_MUSIC_VOLUME = 0.6;
 const MAX_QUESTION_POINTS = 10;
 const MISTAKE_PENALTY = 3;
 const FULL_SCORE_TIME_MS = {
@@ -23,6 +23,7 @@ const clueTitle = document.getElementById("clue-title");
 const clueHint = document.getElementById("clue-hint");
 const clueContent = document.getElementById("clue-content");
 const notes = document.getElementById("answer-notes");
+const notesText = document.getElementById("answer-notes-text");
 const errorMessage = document.getElementById("error-message");
 const actionButton = document.getElementById("action-button");
 const finishButton = document.getElementById("finish-button");
@@ -46,6 +47,9 @@ let preparationId = 0;
 let questionStartedAt = null;
 let totalScoreHundredths = 0;
 let answeredQuestions = 0;
+let quizLoaded = false;
+let initializationId = 0;
+let tutorialShown = false;
 
 function parseCsv(text) {
   const rows = [];
@@ -131,8 +135,10 @@ function loadData(questionText, animeText) {
   ANIME = anime;
   QUESTIONS = questions;
   validateData();
+  quizLoaded = true;
   questionIndex = 0;
   showQuestion();
+  if (!instructionsDialog.open) showTutorial();
 }
 
 function shuffle(items) {
@@ -209,6 +215,7 @@ function showQuestion() {
       const selected = card.getAttribute("aria-pressed") !== "true";
       card.setAttribute("aria-pressed", String(selected));
       card.classList.toggle("selected", selected);
+      selection.textContent = selected ? "✓ YOUR PICK" : "+ SELECT";
     });
     const imageWrap = document.createElement("span");
     imageWrap.className = "poster-wrap";
@@ -221,7 +228,7 @@ function showQuestion() {
     });
     const selection = document.createElement("span");
     selection.className = "selection-label";
-    selection.textContent = "✓ YOUR PICK";
+    selection.textContent = "+ SELECT";
     imageWrap.append(image, selection);
     const name = document.createElement("span");
     name.className = "anime-name";
@@ -240,14 +247,37 @@ function showQuestion() {
     frames: `A new frame appears every ${FRAME_DURATION_MS / 1000} seconds.`
   }[question.type];
   clueContent.innerHTML = '<div class="clue-placeholder" aria-hidden="true"><span>✳</span> YOUR CLUE AWAITS</div>';
-  notes.replaceChildren();
-  notes.hidden = true;
+  notesText.textContent = "No additional information yet.";
   errorMessage.hidden = true;
   questionScore.hidden = true;
   questionTimer.hidden = true;
-  finishButton.hidden = answeredQuestions === 0;
   actionButton.hidden = false;
   prepareClue(question);
+}
+
+function showTutorial() {
+  if (tutorialShown) return;
+  tutorialShown = true;
+  if (typeof introJs !== "function") {
+    showError("The tutorial could not be loaded. You can still play the quiz.");
+    return;
+  }
+  
+  introJs().setOptions({
+    steps: [
+      { element: modeBadge, intro: "This shows the type of clue for the current question." },
+      { element: actionButton, intro: "Start the question to reveal the clue and start the 45-second timer. After choosing, use this button to submit and reveal the answers." },
+      { element: clueContent, intro: `The clue appears here after you start. The clues can be music, descriptions, or frames.` },
+      { element: grid, intro: "The five options for each question are shown before it starts. We suggest reviewing them before you start. Click every matching anime: <b>you can select more than one.</b>" },
+      { element: notes, intro: "After you submit, some questions show additional information and links here to support the answer." },
+      { element: document.querySelector(".score-controls"), intro: "Your score appears here. Finish the game at any time." },
+      { element: actionButton, intro: "Press Start question to begin your first question. The five anime on screen are its options, so review them before you start." }
+    ],
+    disableInteraction: true,
+    exitOnOverlayClick: false,
+    showBullets: false,
+    doneLabel: "Done"
+  }).start();
 }
 
 function showError(message) {
@@ -318,7 +348,6 @@ function prepareClue(question) {
 function startQuestion() {
   const question = QUESTIONS[questionIndex];
   stage = "started";
-  finishButton.hidden = false;
   clueContent.replaceChildren();
   if (question.type === "music") {
     const audio = currentAudio;
@@ -426,9 +455,7 @@ function revealAnswer() {
   questionScore.hidden = false;
   updateScore();
   if (question.comment) {
-    const heading = document.createElement("h3");
-    heading.textContent = "A little extra";
-    const text = document.createElement("p");
+    notesText.replaceChildren();
     const parts = question.comment.split(/(https?:\/\/[^\s,]+)/gi);
     parts.forEach(part => {
       if (/^https?:\/\//i.test(part)) {
@@ -437,17 +464,16 @@ function revealAnswer() {
         link.target = "_blank";
         link.rel = "noopener noreferrer";
         link.textContent = part;
-        text.append(link);
+        notesText.append(link);
       } else {
-        text.append(document.createTextNode(part));
+        notesText.append(document.createTextNode(part));
       }
     });
-    notes.append(heading, text);
-    notes.hidden = false;
+  } else {
+    notesText.textContent = "No additional information for this question.";
   }
   actionButton.hidden = questionIndex === QUESTIONS.length - 1;
   setButton("Next question", "→");
-  finishButton.hidden = false;
 }
 
 actionButton.addEventListener("click", () => {
@@ -472,7 +498,8 @@ function updateScore() {
 }
 
 finishButton.addEventListener("click", () => {
-  if (stage === "finished" || (stage !== "started" && answeredQuestions === 0)) return;
+  if (stage === "finished") return;
+  initializationId++;
   stopClue();
   stage = "finished";
   resultsScore.textContent = `${formatScore(totalScoreHundredths)} / ${answeredQuestions * MAX_QUESTION_POINTS}`;
@@ -482,15 +509,22 @@ finishButton.addEventListener("click", () => {
 
 document.getElementById("restart-button").addEventListener("click", () => {
   resultsDialog.close();
-  QUESTIONS = shuffle(QUESTIONS);
   questionIndex = 0;
   totalScoreHundredths = 0;
   answeredQuestions = 0;
   updateScore();
-  showQuestion();
+  if (quizLoaded) {
+    QUESTIONS = shuffle(QUESTIONS);
+    showQuestion();
+  } else {
+    initialize();
+  }
 });
 
-document.getElementById("instructions-button").addEventListener("click", () => instructionsDialog.close());
+document.getElementById("instructions-button").addEventListener("click", () => {
+  instructionsDialog.close();
+  if (quizLoaded) showTutorial();
+});
 [instructionsDialog, resultsDialog].forEach(dialog => {
   dialog.addEventListener("cancel", event => event.preventDefault());
 });
@@ -503,6 +537,12 @@ function showLoadError(error) {
 }
 
 async function initialize() {
+  const id = ++initializationId;
+  stage = "loading";
+  roundLabel.textContent = "LOADING QUIZ";
+  errorMessage.hidden = true;
+  actionButton.disabled = true;
+  setButton("Loading", "↗");
   if (location.protocol === "file:") {
     showLoadError(new Error("Open this page through a web server to load the spreadsheet."));
     return;
@@ -522,9 +562,10 @@ async function initialize() {
       loadCsv("V2", QUESTION_SHEET_GID),
       loadCsv("Animes", ANIME_SHEET_GID)
     ]);
+    if (id !== initializationId) return;
     loadData(questions, anime);
   } catch (error) {
-    showLoadError(error);
+    if (id === initializationId) showLoadError(error);
   }
 }
 

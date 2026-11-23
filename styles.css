@@ -43,6 +43,7 @@ h1 em { color: #f3a5b8; font-style: normal; }
 .question-heading h2 { display: inline; margin-right: 10px; font-size: 18px; letter-spacing: -.04em; }
 .question-heading p { display: inline; }
 .question-heading p, .clue-copy p { color: #a19ba8; font-size: 13px; line-height: 1.5; }
+.question-heading strong { color: #f3a5b8; }
 .mode-badge { flex: 0 0 auto; padding: 5px 9px; border: 1px solid #6d4a60; border-radius: 5px; color: #f3a5b8; background: #392635; font-size: 10px; font-weight: 700; letter-spacing: .1em; }
 .mode-badge[data-type="music"] { color: #f3a5b8; border-color: #6d4a60; background: #392635; }
 .mode-badge[data-type="description"] { color: #f1d18b; border-color: #78633d; background: #393023; }
@@ -57,8 +58,9 @@ h1 em { color: #f3a5b8; font-style: normal; }
 .image-unavailable::before { content: "IMAGE UNAVAILABLE"; position: absolute; inset: 0; display: grid; place-items: center; color: #aaa4af; font-size: 10px; letter-spacing: .08em; text-align: center; }
 .anime-name { display: block; margin: 6px 1px 0; font: 700 13px/1.3 "Space Grotesk", sans-serif; letter-spacing: -.02em; }
 .anime-card.selected .poster-wrap { border-color: #f3a5b8; }
-.selection-label { display: none; position: absolute; top: 8px; left: 8px; padding: 6px 7px; border-radius: 3px; background: #f3a5b8; color: #241820; font-size: 9px; font-weight: 700; letter-spacing: .04em; }
-.anime-card.selected .selection-label { display: block; }
+.selection-label { position: absolute; top: 8px; left: 8px; padding: 6px 7px; border-radius: 3px; background: #17151edb; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .04em; }
+.anime-card.selected .selection-label { background: #f3a5b8; color: #241820; }
+.anime-card:disabled:not(.selected) .selection-label { display: none; }
 .anime-card.correct .poster-wrap { border-color: #b7e5b7; }
 .anime-card.dimmed { opacity: .3; }
 .correct-label { position: absolute; right: 7px; bottom: 7px; left: 7px; padding: 7px; background: #b7e5b7; color: #18251c; text-align: center; border-radius: 3px; font-size: 9px; font-weight: 700; letter-spacing: .1em; }
@@ -92,7 +94,8 @@ blockquote { margin: 0; padding: 5px 0 5px 20px; border-left: 2px solid #f3a5b8;
 .primary-button span { font-size: 19px; line-height: 1; }
 .secondary-button { padding: 6px 10px; border: 1px solid #6d4a60; border-radius: 5px; background: transparent; color: #f3a5b8; font-weight: 700; font-size: 12px; cursor: pointer; }
 .secondary-button:hover { color: #ffc0cf; }
-.game-dialog { width: min(520px, calc(100% - 32px)); text-align: center; max-height: calc(100% - 32px); padding: 30px; border: 1px solid #6d4a60; border-radius: 10px; background: #24222f; color: #f5f2f1; box-shadow: 0 25px 80px #0008; }
+.introjs-tooltip { color: #24222f; color-scheme: light; }
+.game-dialog { width: min(520px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: 30px; border: 1px solid #6d4a60; border-radius: 10px; background: #24222f; color: #f5f2f1; box-shadow: 0 25px 80px #0008; }
 .game-dialog::backdrop { background: #0c0b13d9; }
 .game-dialog h2 { margin: 10px 0 16px; font-size: 28px; letter-spacing: -.04em; }
 .game-dialog p, .game-dialog li { color: #c4bdc8; font-size: 14px; line-height: 1.6; }
