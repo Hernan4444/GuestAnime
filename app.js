@@ -26,6 +26,7 @@ const notes = document.getElementById("answer-notes");
 const notesText = document.getElementById("answer-notes-text");
 const errorMessage = document.getElementById("error-message");
 const actionButton = document.getElementById("action-button");
+const tutorialButton = document.getElementById("tutorial-button");
 const finishButton = document.getElementById("finish-button");
 const scoreLabel = document.getElementById("score-label");
 const questionScore = document.getElementById("question-score");
@@ -138,7 +139,7 @@ function loadData(questionText, animeText) {
   quizLoaded = true;
   questionIndex = 0;
   showQuestion();
-  if (!instructionsDialog.open) showTutorial();
+  if (!instructionsDialog.open && !tutorialShown) showTutorial();
 }
 
 function shuffle(items) {
@@ -205,6 +206,7 @@ function showQuestion() {
   modeLabel.textContent = { music: "MUSIC ROUND", description: "DESCRIPTION ROUND", frames: "FRAMES ROUND" }[question.type];
   modeBadge.dataset.type = question.type;
   grid.replaceChildren();
+  grid.classList.toggle("posters-obscured", questionIndex === 0);
   options.forEach(id => {
     const card = document.createElement("button");
     card.type = "button";
@@ -253,26 +255,42 @@ function showQuestion() {
   questionTimer.hidden = true;
   actionButton.hidden = false;
   prepareClue(question);
+  tutorialButton.disabled = false;
 }
 
 function showTutorial() {
-  if (tutorialShown) return;
   tutorialShown = true;
   if (typeof introJs !== "function") {
     showError("The tutorial could not be loaded. You can still play the quiz.");
     return;
   }
-  
+
+  const actionIntro = {
+    loading: "The clue is loading. When it is ready, press Show clue to reveal it and start the 45-second timer.",
+    "load-error": "Use this button to retry loading the clue before starting the question.",
+    ready: "Press Show clue to reveal the clue and start the 45-second timer. After choosing, use this button to submit and reveal the answers.",
+    started: "The question is running. Use this button to submit your picks and reveal the answers.",
+    revealed: "Use this button to move on to the next question."
+  }[stage];
+  const steps = [
+    { element: modeBadge, intro: `This shows the type of clue for the current question.${stage === "started" ? " The timer keeps running while the tutorial is open." : ""}` },
+    ...(!actionButton.hidden ? [{ element: actionButton, intro: actionIntro }] : []),
+    { element: clueContent, intro: "The clue appears here after you start. The clues can be music, descriptions, or frames." },
+    { element: grid, intro: `The five options for each question are shown before it starts. ${questionIndex === 0 ? "For the first question, the images are blurred until you press Show clue; you can review the anime names beforehand." : "We suggest reviewing them before you start."} ${stage === "revealed" ? "The correct answers are highlighted here." : "Click every matching anime: <b>you can select more than one.</b>"}` },
+    { element: notes, intro: "After you submit, some questions show additional information and links here to support the answer." },
+    { element: document.querySelector(".score-controls"), intro: "Your score appears here. Finish the game at any time." }
+  ];
+  if (!actionButton.hidden) {
+    steps.push({ element: actionButton, intro: {
+      loading: "Review the five anime names while the clue loads, then press Show clue when you are ready.",
+      "load-error": "Retry loading the clue, then review the five anime names before starting the question.",
+      ready: "Press Show clue to begin this question. The five anime on screen are its options, so review their names before you start.",
+      started: "Choose all matching anime, then press Submit & reveal answer.",
+      revealed: "Press Next question when you are ready to continue."
+    }[stage] });
+  }
   introJs().setOptions({
-    steps: [
-      { element: modeBadge, intro: "This shows the type of clue for the current question." },
-      { element: actionButton, intro: "Start the question to reveal the clue and start the 45-second timer. After choosing, use this button to submit and reveal the answers." },
-      { element: clueContent, intro: `The clue appears here after you start. The clues can be music, descriptions, or frames.` },
-      { element: grid, intro: "The five options for each question are shown before it starts. We suggest reviewing them before you start. Click every matching anime: <b>you can select more than one.</b>" },
-      { element: notes, intro: "After you submit, some questions show additional information and links here to support the answer." },
-      { element: document.querySelector(".score-controls"), intro: "Your score appears here. Finish the game at any time." },
-      { element: actionButton, intro: "Press Start question to begin your first question. The five anime on screen are its options, so review them before you start." }
-    ],
+    steps,
     disableInteraction: true,
     exitOnOverlayClick: false,
     showBullets: false,
@@ -334,7 +352,7 @@ function prepareClue(question) {
   loading.then(() => {
     if (id !== preparationId) return;
     stage = "ready";
-    setButton("Start question", "↗");
+    setButton("Show clue", "↗");
     actionButton.disabled = false;
   }).catch(error => {
     if (id !== preparationId) return;
@@ -348,6 +366,7 @@ function prepareClue(question) {
 function startQuestion() {
   const question = QUESTIONS[questionIndex];
   stage = "started";
+  grid.classList.remove("posters-obscured");
   clueContent.replaceChildren();
   if (question.type === "music") {
     const audio = currentAudio;
@@ -523,8 +542,9 @@ document.getElementById("restart-button").addEventListener("click", () => {
 
 document.getElementById("instructions-button").addEventListener("click", () => {
   instructionsDialog.close();
-  if (quizLoaded) showTutorial();
+  if (quizLoaded && !tutorialShown) showTutorial();
 });
+tutorialButton.addEventListener("click", showTutorial);
 [instructionsDialog, resultsDialog].forEach(dialog => {
   dialog.addEventListener("cancel", event => event.preventDefault());
 });
@@ -539,6 +559,7 @@ function showLoadError(error) {
 async function initialize() {
   const id = ++initializationId;
   stage = "loading";
+  tutorialButton.disabled = true;
   roundLabel.textContent = "LOADING QUIZ";
   errorMessage.hidden = true;
   actionButton.disabled = true;
