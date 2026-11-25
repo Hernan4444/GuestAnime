@@ -14,6 +14,20 @@ After clicking “Let's play”, a skippable Intro.js tutorial uses a demo quest
 
 Music and all three frame images for the current question load before the start button becomes available; the clue remains hidden and the timer does not start during loading. If a clue fails to load, use the retry button.
 
+### Normalizing music volume
+
+To create normalized copies, install Python 3 and FFmpeg (including its `libmp3lame` encoder). On Windows, the script first looks for a portable `tools/ffmpeg/ffmpeg.exe`; otherwise, it looks for `ffmpeg` on your PATH. You can obtain a Windows portable build from the [FFmpeg download page](https://ffmpeg.org/download.html). The portable tool is excluded from Git and must be obtained separately on other computers.
+
+Run from the project directory:
+
+```powershell
+python normalize_music.py
+```
+
+The script analyzes each MP3 in `source/music` and writes a separate copy with the same name to `source/music-normalized`. It targets -14 LUFS integrated loudness and -1 dBTP using FFmpeg's two-pass `loudnorm` filter. Depending on the source, limiting or the MP3 encoding can affect the final peak and loudness; individual sections can still vary. Re-encoding MP3 is lossy.
+
+Original files are never modified, and existing output files are skipped. Errors are reported per song and result in a nonzero exit status. To retry a failed or previously processed song, remove its output copy first. The game continues to use `source/music`: listen to the copies and back up the originals before manually replacing any files there.
+
 After an answer is submitted, “A little extra” shows any additional information and links for that question.
 
 Use the Tutorial button in the header to revisit the tutorial for the current question. If the question has started, its timer keeps running during the tutorial. The tutorial loads Intro.js from jsDelivr. If it cannot load, the game displays an error and remains playable. Intro.js is available under [AGPLv3 or a commercial license](https://introjs.com/docs/getting-started/license).
