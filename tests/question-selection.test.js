@@ -131,6 +131,21 @@ test("loading parses optional other distractors and validates them only in order
   assert.doesNotThrow(() => normal.loadData(header + "1,2,99,Descripción,clue,", anime));
 });
 
+test("loading accepts space-separated IDs while preserving comma-separated frame filenames", () => {
+  const game = createGame("?ordered");
+  vm.runInContext("showDemo = () => {}; instructionsDialog.open = true", game);
+  const anime = "MAL,Name,Photo\n1,A,a\n2,B,b\n3,C,c\n4,D,d\n5,E,e\n6,F,f";
+  const header = "Respuesta,Distractores,Otros Distractores,Tipo,Fuente,Comentario Adicional\n";
+  const frames = '"frame one, frame two, frame three"';
+  game.loadData(header + `1  2,3\t4,5 6,Frames,${frames},\n"1, 2","3, 4","5, 6",Frames,${frames},`, anime);
+  for (const question of vm.runInContext("QUESTIONS", game)) {
+    assert.deepEqual(Array.from(question.answers), ["1", "2"]);
+    assert.deepEqual(Array.from(question.distractors), ["3", "4"]);
+    assert.deepEqual(Array.from(question.otherDistractors), ["5", "6"]);
+    assert.deepEqual(Array.from(question.source), ["frame one", "frame two", "frame three"]);
+  }
+});
+
 test("ordered mode uses the complete dataset in its original order", () => {
   const game = createGame("?ordered");
   const all = questions({ music: 20, description: 10, frames: 10 });

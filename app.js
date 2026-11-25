@@ -118,7 +118,7 @@ function loadData(questionText, animeText) {
   const animeColumn = Object.fromEntries(animeColumns.map(name => [name, animeHeaders.indexOf(name)]));
   const anime = {};
   const questions = [];
-  const splitIds = value => value.split(",").map(item => item.trim()).filter(Boolean);
+  const splitIds = value => value.split(/[,\s]+/).filter(Boolean);
   const types = { musica: "music", descripcion: "description", frames: "frames" };
   animeRows.forEach((row, index) => {
     const get = name => (row[animeColumn[name]] || "").trim();
@@ -137,7 +137,7 @@ function loadData(questionText, animeText) {
         answers: splitIds(get("Respuesta")),
         distractors: splitIds(get("Distractores")),
         otherDistractors: splitIds(get("Otros Distractores")),
-        source: type === "frames" ? splitIds(get("Fuente")) : get("Fuente"),
+        source: type === "frames" ? get("Fuente").split(",").map(item => item.trim()).filter(Boolean) : get("Fuente"),
         comment: get("Comentario Adicional")
       });
     }
