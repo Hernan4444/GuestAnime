@@ -137,7 +137,7 @@ function loadData(questionText, animeText) {
         answers: splitIds(get("Respuesta")),
         distractors: splitIds(get("Distractores")),
         otherDistractors: splitIds(get("Otros Distractores")),
-        source: type === "frames" ? get("Fuente").split(",").map(item => item.trim()).filter(Boolean) : get("Fuente"),
+        source: type === "frames" ? get("Fuente").split(" ").map(item => item.trim()).filter(Boolean) : get("Fuente"),
         comment: get("Comentario Adicional")
       });
     }
@@ -227,7 +227,7 @@ function validateData() {
     }
     if (!["music", "description", "frames"].includes(question.type) ||
         (question.type === "frames" ? !Array.isArray(question.source) || question.source.length !== 3 : typeof question.source !== "string" || !question.source.trim())) {
-      throw new Error(`Question ${index + 1} has an invalid clue.`);
+      throw new Error(`Question ${index + 1} has an invalid clue. ${JSON.stringify(question)}`);
     }
   }
 }
