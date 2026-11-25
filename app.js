@@ -114,6 +114,7 @@ function loadData(questionText, animeText) {
     throw new Error("A CSV is missing required columns.");
   }
   const questionColumn = Object.fromEntries(questionColumns.map(name => [name, questionHeaders.indexOf(name)]));
+  questionColumn["Otros Distractores"] = questionHeaders.indexOf("Otros Distractores");
   const animeColumn = Object.fromEntries(animeColumns.map(name => [name, animeHeaders.indexOf(name)]));
   const anime = {};
   const questions = [];
@@ -129,12 +130,13 @@ function loadData(questionText, animeText) {
   });
   questionRows.forEach(row => {
     const get = name => (row[questionColumn[name]] || "").trim();
-    if (get("Respuesta") || get("Distractores") || get("Tipo") || get("Fuente") || get("Comentario Adicional")) {
+    if (get("Respuesta") || get("Distractores") || get("Otros Distractores") || get("Tipo") || get("Fuente") || get("Comentario Adicional")) {
       const type = types[get("Tipo").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()];
       questions.push({
         type,
         answers: splitIds(get("Respuesta")),
         distractors: splitIds(get("Distractores")),
+        otherDistractors: splitIds(get("Otros Distractores")),
         source: type === "frames" ? splitIds(get("Fuente")) : get("Fuente"),
         comment: get("Comentario Adicional")
       });
@@ -166,8 +168,12 @@ function shuffle(items) {
 
 function selectQuestionOptions(question) {
   const required = [...question.answers, ...question.distractors];
-  const fillers = shuffle(Object.keys(ANIME).filter(id => !required.includes(id)));
-  return shuffle([...required, ...fillers.slice(0, 5 - required.length)]);
+  const additional = new URLSearchParams(location.search).has("ordered")
+    ? shuffle([...new Set(question.otherDistractors.filter(id => !required.includes(id)))]).slice(0, 5 - required.length)
+    : [];
+  const choices = [...required, ...additional];
+  const fillers = shuffle(Object.keys(ANIME).filter(id => !choices.includes(id)));
+  return shuffle([...choices, ...fillers.slice(0, 5 - choices.length)]);
 }
 
 function selectQuestions(questions) {
@@ -215,6 +221,9 @@ function validateData() {
     if (!question.answers.length || new Set(choices).size !== choices.length || choices.length > 5 ||
         choices.some(id => !ANIME[id]) || Object.keys(ANIME).length < 5) {
       throw new Error(`Question ${index + 1} has invalid answers or anime IDs.`);
+    }
+    if (new URLSearchParams(location.search).has("ordered") && question.otherDistractors.some(id => !ANIME[id])) {
+      throw new Error(`Question ${index + 1} has invalid other distractor anime IDs.`);
     }
     if (!["music", "description", "frames"].includes(question.type) ||
         (question.type === "frames" ? !Array.isArray(question.source) || question.source.length !== 3 : typeof question.source !== "string" || !question.source.trim())) {

@@ -86,6 +86,51 @@ test("question options always include answers and required distractors, then fil
   assert.deepEqual(options.filter(id => !["1", "2", "3", "4"].includes(id)), ["6"]);
 });
 
+test("ordered options prioritize other distractors before random fillers", () => {
+  const game = createGame("?ordered");
+  vm.runInContext("ANIME = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {} }; Math.random = () => 0", game);
+  const selected = game.selectQuestionOptions({
+    answers: ["1"],
+    distractors: ["2"],
+    otherDistractors: ["3", "4"]
+  });
+  assert.equal(selected.length, 5);
+  assert.equal(new Set(selected).size, 5);
+  assert.ok(["1", "2", "3", "4"].every(id => selected.includes(id)));
+});
+
+test("ordered options use only available slots and avoid duplicate other distractors", () => {
+  const game = createGame("?ordered");
+  vm.runInContext("ANIME = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {}, 7: {} }", game);
+  const selected = game.selectQuestionOptions({
+    answers: ["1"],
+    distractors: ["2", "3"],
+    otherDistractors: ["1", "4", "4", "5", "6"]
+  });
+  assert.equal(selected.length, 5);
+  assert.equal(new Set(selected).size, 5);
+  assert.ok(["1", "2", "3"].every(id => selected.includes(id)));
+  assert.equal(selected.filter(id => ["4", "5", "6"].includes(id)).length, 2);
+  assert.ok(!selected.includes("7"));
+});
+
+test("loading parses optional other distractors and validates them only in ordered mode", () => {
+  const anime = "MAL,Name,Photo\n1,A,a\n2,B,b\n3,C,c\n4,D,d\n5,E,e";
+  const header = "Respuesta,Distractores,Otros Distractores,Tipo,Fuente,Comentario Adicional\n";
+  const csv = header + '1,2,"3, 4",Descripción,clue,';
+  const ordered = createGame("?ordered");
+  vm.runInContext("showDemo = () => {}; instructionsDialog.open = true", ordered);
+  ordered.loadData(csv, anime);
+  assert.deepEqual(Array.from(vm.runInContext("QUESTIONS[0].otherDistractors", ordered)), ["3", "4"]);
+  assert.throws(() => ordered.loadData(header + "1,2,99,Descripción,clue,", anime), /invalid other distractor/);
+  ordered.loadData("Respuesta,Distractores,Tipo,Fuente,Comentario Adicional\n1,2,Descripción,clue,", anime);
+  assert.equal(vm.runInContext("QUESTIONS[0].otherDistractors.length", ordered), 0);
+
+  const normal = createGame();
+  vm.runInContext("showDemo = () => {}; instructionsDialog.open = true", normal);
+  assert.doesNotThrow(() => normal.loadData(header + "1,2,99,Descripción,clue,", anime));
+});
+
 test("ordered mode uses the complete dataset in its original order", () => {
   const game = createGame("?ordered");
   const all = questions({ music: 20, description: 10, frames: 10 });
