@@ -6,6 +6,7 @@ const DEFAULT_MUSIC_VOLUME = 0.6;
 const MAX_QUESTION_POINTS = 10;
 const MISTAKE_PENALTY = 3;
 const RANDOM_QUESTION_COUNT = 20;
+const QUESTION_OPTION_COUNT = 4;
 const FULL_SCORE_TIME_MS = {
   music: 5000,
   description: 10000,
@@ -13,7 +14,7 @@ const FULL_SCORE_TIME_MS = {
 };
 const QUESTION_TIME_LIMIT_MS = 45000;
 const SPREADSHEET_EXPORT_URL = "https://docs.google.com/spreadsheets/d/11yaou7CKAUe7ebrMjAoYG-JCx-pWR0FT2YPAb63tXKs/export?format=csv";
-const QUESTION_SHEET_GID = "2044066971";
+const QUESTION_SHEET_GID = "637749647";
 const ANIME_SHEET_GID = "644290686";
 
 const grid = document.getElementById("anime-grid");
@@ -166,14 +167,22 @@ function shuffle(items) {
   return result;
 }
 
+function requiredQuestionOptions(question) {
+  return [...question.answers, ...question.distractors.slice(0, Math.max(0, QUESTION_OPTION_COUNT - question.answers.length))];
+}
+
+function orderedQuestionOptions(question, required) {
+  if (!new URLSearchParams(location.search).has("ordered")) return [];
+  return [...new Set(question.otherDistractors.filter(id => !required.includes(id)))]
+    .slice(0, Math.max(0, QUESTION_OPTION_COUNT - required.length));
+}
+
 function selectQuestionOptions(question) {
-  const required = [...question.answers, ...question.distractors];
-  const additional = new URLSearchParams(location.search).has("ordered")
-    ? shuffle([...new Set(question.otherDistractors.filter(id => !required.includes(id)))]).slice(0, 5 - required.length)
-    : [];
+  const required = requiredQuestionOptions(question);
+  const additional = orderedQuestionOptions(question, required);
   const choices = [...required, ...additional];
   const fillers = shuffle(Object.keys(ANIME).filter(id => !choices.includes(id)));
-  return shuffle([...choices, ...fillers.slice(0, 5 - choices.length)]);
+  return shuffle([...choices, ...fillers.slice(0, QUESTION_OPTION_COUNT - choices.length)]);
 }
 
 function selectQuestions(questions) {
@@ -217,12 +226,13 @@ function validateData() {
   }
   if (!QUESTIONS.length) throw new Error("There are no questions to play.");
   for (const [index, question] of QUESTIONS.entries()) {
-    const choices = [...question.answers, ...question.distractors];
-    if (!question.answers.length || new Set(choices).size !== choices.length || choices.length > 5 ||
-        choices.some(id => !ANIME[id]) || Object.keys(ANIME).length < 5) {
+    const choices = requiredQuestionOptions(question);
+    if (!question.answers.length || question.answers.length > QUESTION_OPTION_COUNT ||
+        new Set(choices).size !== choices.length ||
+        choices.some(id => !ANIME[id]) || Object.keys(ANIME).length < QUESTION_OPTION_COUNT) {
       throw new Error(`Question ${index + 1} has invalid answers or anime IDs.`);
     }
-    if (new URLSearchParams(location.search).has("ordered") && question.otherDistractors.some(id => !ANIME[id])) {
+    if (orderedQuestionOptions(question, choices).some(id => !ANIME[id])) {
       throw new Error(`Question ${index + 1} has invalid other distractor anime IDs.`);
     }
     if (!["music", "description", "frames"].includes(question.type) ||
@@ -296,7 +306,7 @@ function showDemo() {
   roundLabel.textContent = `QUESTION 00 / ${String(QUESTIONS.length).padStart(2, "0")} · DEMO`;
   modeLabel.textContent = "DEMO ROUND";
   delete modeBadge.dataset.type;
-  renderOptions(shuffle(Object.keys(ANIME)).slice(0, 5));
+  renderOptions(shuffle(Object.keys(ANIME)).slice(0, QUESTION_OPTION_COUNT));
   clueTitle.textContent = "Example clue";
   clueHint.textContent = "This is a demonstration of the quiz.";
   clueContent.innerHTML = '<div class="clue-placeholder" aria-hidden="true"><span>✳</span> YOUR CLUE AWAITS</div>';
@@ -374,7 +384,7 @@ function showTutorial(isDemo = false) {
     { element: modeBadge, intro: `${isDemo ? "This is a demo question. " : ""}This shows the type of clue for the current question.${stage === "started" ? " The timer keeps running while the tutorial is open." : ""}` },
     ...(!actionButton.hidden ? [{ element: actionButton, intro: actionIntro }] : []),
     { element: clueContent, intro: "The clue appears here after you start. The clues can be music, descriptions, or frames." },
-    { element: grid, intro: `${isDemo ? "These five anime are random examples. " : ""}The five options for each question are shown before it starts. We suggest reviewing them before you start. ${stage === "revealed" ? "The correct answers are highlighted here." : "Click every matching anime: <b>you can select more than one.</b>"}` },
+    { element: grid, intro: `${isDemo ? "These four anime are random examples. " : ""}The four options for each question are shown before it starts. We suggest reviewing them before you start. ${stage === "revealed" ? "The correct answers are highlighted here." : "Click every matching anime: <b>you can select more than one.</b>"}` },
     { element: notes, intro: "After you submit, some questions show additional information and links here to support the answer." },
     { element: document.querySelector(".score-controls"), intro: "Your score appears here. Finish the game at any time." }
   ];
@@ -382,9 +392,9 @@ function showTutorial(isDemo = false) {
     steps.push({ element: startGameButton, intro: "Finish the tutorial, then press Start game to begin the first question. Its anime options will be shown before you reveal its clue." });
   } else if (!actionButton.hidden) {
     steps.push({ element: actionButton, intro: {
-      loading: "Review the five anime names while the clue loads, then press Show clue when you are ready.",
-      "load-error": "Retry loading the clue, then review the five anime names before starting the question.",
-      ready: "Press Show clue to begin this question. The five anime on screen are its options, so review their names before you start.",
+      loading: "Review the four anime names while the clue loads, then press Show clue when you are ready.",
+      "load-error": "Retry loading the clue, then review the four anime names before starting the question.",
+      ready: "Press Show clue to begin this question. The four anime on screen are its options, so review their names before you start.",
       started: "Choose all matching anime, then press Submit & reveal answer.",
       revealed: "Press Next question when you are ready to continue."
     }[stage] });

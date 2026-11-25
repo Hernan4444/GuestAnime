@@ -1,2 +1,4 @@
 /tools/ffmpeg/
 source/music-original/
+wayground.csv
+export_wayground.py

@@ -11,8 +11,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
-INPUT_DIR = ROOT / "source" / "music"
-OUTPUT_DIR = ROOT / "source" / "music-normalized"
+INPUT_DIR = ROOT / "source" / "music-original"
+OUTPUT_DIR = ROOT / "source" / "music"
 PORTABLE_FFMPEG = ROOT / "tools" / "ffmpeg" / "ffmpeg.exe"
 TARGET = "I=-14:TP=-1:LRA=11"
 MEASUREMENTS = {

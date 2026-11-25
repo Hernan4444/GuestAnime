@@ -72,18 +72,18 @@ test("each random selection samples from the full dataset", () => {
   assert.ok(second.some(question => !first.includes(question)));
 });
 
-test("question options always include answers and required distractors, then fill randomly", () => {
+test("normal options include answers and prioritized distractors, then fill randomly", () => {
   const game = createGame();
   vm.runInContext("ANIME = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {} }; Math.random = () => 0", game);
   const selected = vm.runInContext(`selectQuestionOptions({
     answers: ["1", "2"],
-    distractors: ["3", "4"],
-    otherDistractors: ["5"]
+    distractors: ["3"],
+    otherDistractors: ["4"]
   })`, game);
   const options = Array.from(selected);
-  assert.equal(options.length, 5);
-  assert.deepEqual(options.filter(id => ["1", "2", "3", "4"].includes(id)).sort(), ["1", "2", "3", "4"]);
-  assert.deepEqual(options.filter(id => !["1", "2", "3", "4"].includes(id)), ["6"]);
+  assert.equal(options.length, 4);
+  assert.deepEqual(options.filter(id => ["1", "2", "3"].includes(id)).sort(), ["1", "2", "3"]);
+  assert.deepEqual(options.filter(id => !["1", "2", "3"].includes(id)), ["5"]);
 });
 
 test("ordered options prioritize other distractors before random fillers", () => {
@@ -94,8 +94,8 @@ test("ordered options prioritize other distractors before random fillers", () =>
     distractors: ["2"],
     otherDistractors: ["3", "4"]
   });
-  assert.equal(selected.length, 5);
-  assert.equal(new Set(selected).size, 5);
+  assert.equal(selected.length, 4);
+  assert.equal(new Set(selected).size, 4);
   assert.ok(["1", "2", "3", "4"].every(id => selected.includes(id)));
 });
 
@@ -107,11 +107,51 @@ test("ordered options use only available slots and avoid duplicate other distrac
     distractors: ["2", "3"],
     otherDistractors: ["1", "4", "4", "5", "6"]
   });
-  assert.equal(selected.length, 5);
-  assert.equal(new Set(selected).size, 5);
+  assert.equal(selected.length, 4);
+  assert.equal(new Set(selected).size, 4);
   assert.ok(["1", "2", "3"].every(id => selected.includes(id)));
-  assert.equal(selected.filter(id => ["4", "5", "6"].includes(id)).length, 2);
+  assert.ok(selected.includes("4"));
+  assert.ok(!selected.includes("5") && !selected.includes("6"));
   assert.ok(!selected.includes("7"));
+});
+
+test("ordered options fill remaining slots randomly after other distractors", () => {
+  const game = createGame("?ordered");
+  vm.runInContext("ANIME = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {} }; Math.random = () => 0", game);
+  const selected = game.selectQuestionOptions({
+    answers: ["1"],
+    distractors: ["2"],
+    otherDistractors: ["3"]
+  });
+  assert.equal(selected.length, 4);
+  assert.ok(["1", "2", "3"].every(id => selected.includes(id)));
+  assert.equal(selected.filter(id => id === "4" || id === "5").length, 1);
+});
+
+test("four answers take priority and excess distractors are ignored", () => {
+  const game = createGame("?ordered");
+  vm.runInContext("ANIME = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {} }", game);
+  const allAnswers = game.selectQuestionOptions({
+    answers: ["1", "2", "3", "4"],
+    distractors: ["5"],
+    otherDistractors: ["6"]
+  });
+  assert.deepEqual(Array.from(allAnswers).sort(), ["1", "2", "3", "4"]);
+  const prioritized = game.selectQuestionOptions({
+    answers: ["1"],
+    distractors: ["2", "3", "4", "5"],
+    otherDistractors: ["6"]
+  });
+  assert.deepEqual(Array.from(prioritized).sort(), ["1", "2", "3", "4"]);
+});
+
+test("loading allows extra distractors but rejects more than four answers", () => {
+  const game = createGame("?ordered");
+  vm.runInContext("showDemo = () => {}; instructionsDialog.open = true", game);
+  const anime = "MAL,Name,Photo\n1,A,a\n2,B,b\n3,C,c\n4,D,d\n5,E,e";
+  const header = "Respuesta,Distractores,Otros Distractores,Tipo,Fuente,Comentario Adicional\n";
+  assert.doesNotThrow(() => game.loadData(header + "1 2 3 4,99,99,Musica,clue,", anime));
+  assert.throws(() => game.loadData(header + "1 2 3 4 5,,,Musica,clue,", anime), /invalid answers/);
 });
 
 test("loading parses optional other distractors and validates them only in ordered mode", () => {
