@@ -82,7 +82,8 @@ blockquote { margin: 0; padding: 5px 0 5px 20px; border-left: 2px solid #f3a5b8;
 .timer-value { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; background: #17151ee8; color: #fff; font: 700 18px/1 "Space Grotesk", sans-serif; }
 .answer-notes { margin-top: 20px; padding: 18px 22px; border: 1px solid #4f484e; border-radius: 6px; background: #2b252e; }
 .answer-notes h3 { font-size: 16px; }
-.answer-notes p { margin-top: 6px; color: #beb3bd; font-size: 13px; line-height: 1.5; }
+.answer-notes #answer-notes-text { margin-top: 6px; color: #beb3bd; font-size: 13px; line-height: 1.5; }
+.answer-notes ol { padding-left: 22px; }
 .answer-notes a { color: #f3a5b8; overflow-wrap: anywhere; text-underline-offset: 4px; }
 .error-message { margin-top: 16px; color: #ffb9b9; font-size: 13px; line-height: 1.5; }
 .footer-tip { display: flex; align-items: center; gap: 10px; color: #aaa2ae; font-size: 11px; line-height: 1.6; }

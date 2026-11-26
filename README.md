@@ -38,7 +38,7 @@ Edit the `V2` and `Animes` sheets in the [Google spreadsheet](https://docs.googl
 
 - In `V2`, `Respuesta` and `Distractores` contain space-separated anime IDs (for example, `123 456`). All answers are shown, up to four distinct IDs; remaining slots use distractors from left to right. In ordered mode, the optional `Otros Distractores` column supplies additional IDs from left to right before any remaining slots are filled randomly from the catalog. In default mode, that column is ignored and remaining slots are filled randomly. IDs selected from these columns must exist in the anime catalog. Comma-separated IDs are also accepted for compatibility with existing spreadsheet data.
 - In `V2`, `Tipo` is `Musica`, `Descripción`, or `Frames`; `Fuente` is the music filename without `.mp3` in `source/music`, the description text in any language, or three comma-separated frame filenames without `.jpg` in `source/frames`.
-- In `V2`, `Comentario Adicional` is optional text and links displayed with the answer.
+- In `V2`, `Comentario Adicional` is an optional space-separated list of links displayed as a numbered list with the answer.
 - In `Animes`, `MAL`, `Name`, and `Photo` are the anime ID, name, and image URL.
 
 The sheet identifiers are configured in `app.js`. If either sheet is recreated, update its identifier there.

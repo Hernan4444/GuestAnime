@@ -595,20 +595,18 @@ function revealAnswer() {
   questionScore.hidden = false;
   updateScore();
   if (question.comment) {
-    notesText.replaceChildren();
-    const parts = question.comment.split(/(https?:\/\/[^\s,]+)/gi);
-    parts.forEach(part => {
-      if (/^https?:\/\//i.test(part)) {
-        const link = document.createElement("a");
-        link.href = part;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = part;
-        notesText.append(link);
-      } else {
-        notesText.append(document.createTextNode(part));
-      }
+    const list = document.createElement("ol");
+    question.comment.split(" ").filter(Boolean).forEach(url => {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = url;
+      item.append(link);
+      list.append(item);
     });
+    notesText.replaceChildren(list);
   } else {
     notesText.textContent = "No additional information for this question.";
   }
