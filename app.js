@@ -5,7 +5,7 @@ const MUSIC_START_WINDOW_SECONDS = 5;
 const DEFAULT_MUSIC_VOLUME = 0.6;
 const MAX_QUESTION_POINTS = 10;
 const MISTAKE_PENALTY = 3;
-const RANDOM_QUESTION_COUNT = 20;
+const RANDOM_QUESTION_COUNT = 15;
 const QUESTION_OPTION_COUNT = new URLSearchParams(location.search).has("ordered") ? 4 : 5;
 const FULL_SCORE_TIME_MS = {
   music: 5000,
