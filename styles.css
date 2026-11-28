@@ -49,7 +49,7 @@ h1 em { color: #f3a5b8; font-style: normal; }
 .mode-badge[data-type="description"] { color: #f1d18b; border-color: #78633d; background: #393023; }
 .mode-badge[data-type="frames"] { color: #a9d8f6; border-color: #496d86; background: #233344; }
 .mode-badge span:first-child { font-size: 14px; padding-right: 3px; }
-.anime-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; max-width: 912px; margin: 12px auto 0; }
+.anime-grid { display: grid; grid-template-columns: repeat(var(--option-count, 4), minmax(0, 1fr)); gap: 14px; max-width: 912px; margin: 12px auto 0; }
 .anime-card { min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: opacity .25s; }
 .frames-round .anime-card { align-self: start; }
 .anime-card:disabled { cursor: default; }

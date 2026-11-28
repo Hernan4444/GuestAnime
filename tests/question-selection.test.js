@@ -17,6 +17,7 @@ function createGame(search = "") {
     URLSearchParams,
     location: { protocol: "file:", search },
     document: {
+      cookie: "",
       getElementById: element,
       querySelector: element,
       createElement: element,
@@ -81,9 +82,52 @@ test("normal options include answers and prioritized distractors, then fill rand
     otherDistractors: ["4"]
   })`, game);
   const options = Array.from(selected);
-  assert.equal(options.length, 4);
+  assert.equal(options.length, 5);
+  assert.equal(new Set(options).size, 5);
   assert.deepEqual(options.filter(id => ["1", "2", "3"].includes(id)).sort(), ["1", "2", "3"]);
-  assert.deepEqual(options.filter(id => !["1", "2", "3"].includes(id)), ["5"]);
+  assert.deepEqual(options.filter(id => !["1", "2", "3"].includes(id)).sort(), ["5", "6"]);
+});
+
+test("normal options allow five answers and limit excess distractors", () => {
+  const game = createGame();
+  vm.runInContext("ANIME = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {} }", game);
+  const allAnswers = game.selectQuestionOptions({
+    answers: ["1", "2", "3", "4", "5"],
+    distractors: ["6"],
+    otherDistractors: []
+  });
+  assert.deepEqual(Array.from(allAnswers).sort(), ["1", "2", "3", "4", "5"]);
+  const prioritized = game.selectQuestionOptions({
+    answers: ["1"],
+    distractors: ["2", "3", "4", "5", "6"],
+    otherDistractors: []
+  });
+  assert.deepEqual(Array.from(prioritized).sort(), ["1", "2", "3", "4", "5"]);
+});
+
+test("rendering and demo use the option count for each mode", () => {
+  for (const [search, expected] of [["", 5], ["?ordered", 4]]) {
+    const game = createGame(search);
+    vm.runInContext(`
+      ANIME = { 1: {name: "A", image: "a"}, 2: {name: "B", image: "b"},
+                3: {name: "C", image: "c"}, 4: {name: "D", image: "d"},
+                5: {name: "E", image: "e"} };
+      QUESTIONS = [{}];
+      var rendered = 0, columns;
+      grid.style = { setProperty: (name, value) => columns = value };
+      grid.append = () => rendered++;
+      grid.closest = () => ({ classList: { remove() {} } });
+      modeBadge.dataset = {};
+      document.createElement = () => ({
+        dataset: {}, addEventListener() {}, setAttribute() {}, append() {}
+      });
+      stopClue = () => {};
+      setButton = () => {};
+      showDemo();
+    `, game);
+    assert.equal(game.rendered, expected);
+    assert.equal(game.columns, expected);
+  }
 });
 
 test("ordered options prioritize other distractors before random fillers", () => {
@@ -154,6 +198,18 @@ test("loading allows extra distractors but rejects more than four answers", () =
   assert.throws(() => game.loadData(header + "1 2 3 4 5,,,Musica,clue,", anime), /invalid answers/);
 });
 
+test("normal mode requires five anime and accepts up to five answers", () => {
+  const game = createGame();
+  vm.runInContext("showDemo = () => {}; instructionsDialog.open = true", game);
+  const fourAnime = "MAL,Name,Photo\n1,A,a\n2,B,b\n3,C,c\n4,D,d";
+  const fiveAnime = fourAnime + "\n5,E,e";
+  const sixAnime = fiveAnime + "\n6,F,f";
+  const header = "Respuesta,Distractores,Tipo,Fuente,Comentario Adicional\n";
+  assert.throws(() => game.loadData(header + "1,,Musica,clue,", fourAnime), /invalid answers/);
+  assert.doesNotThrow(() => game.loadData(header + "1 2 3 4 5,,Musica,clue,", fiveAnime));
+  assert.throws(() => game.loadData(header + "1 2 3 4 5 6,,Musica,clue,", sixAnime), /invalid answers/);
+});
+
 test("loading parses optional other distractors and validates them only in ordered mode", () => {
   const anime = "MAL,Name,Photo\n1,A,a\n2,B,b\n3,C,c\n4,D,d\n5,E,e";
   const header = "Respuesta,Distractores,Otros Distractores,Tipo,Fuente,Comentario Adicional\n";
@@ -171,18 +227,18 @@ test("loading parses optional other distractors and validates them only in order
   assert.doesNotThrow(() => normal.loadData(header + "1,2,99,Descripción,clue,", anime));
 });
 
-test("loading accepts space-separated IDs while preserving comma-separated frame filenames", () => {
+test("loading accepts space-separated IDs and frame filenames", () => {
   const game = createGame("?ordered");
   vm.runInContext("showDemo = () => {}; instructionsDialog.open = true", game);
   const anime = "MAL,Name,Photo\n1,A,a\n2,B,b\n3,C,c\n4,D,d\n5,E,e\n6,F,f";
   const header = "Respuesta,Distractores,Otros Distractores,Tipo,Fuente,Comentario Adicional\n";
-  const frames = '"frame one, frame two, frame three"';
+  const frames = "frame_one frame_two frame_three";
   game.loadData(header + `1  2,3\t4,5 6,Frames,${frames},\n"1, 2","3, 4","5, 6",Frames,${frames},`, anime);
   for (const question of vm.runInContext("QUESTIONS", game)) {
     assert.deepEqual(Array.from(question.answers), ["1", "2"]);
     assert.deepEqual(Array.from(question.distractors), ["3", "4"]);
     assert.deepEqual(Array.from(question.otherDistractors), ["5", "6"]);
-    assert.deepEqual(Array.from(question.source), ["frame one", "frame two", "frame three"]);
+    assert.deepEqual(Array.from(question.source), ["frame_one", "frame_two", "frame_three"]);
   }
 });
 

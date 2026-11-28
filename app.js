@@ -6,13 +6,15 @@ const DEFAULT_MUSIC_VOLUME = 0.6;
 const MAX_QUESTION_POINTS = 10;
 const MISTAKE_PENALTY = 3;
 const RANDOM_QUESTION_COUNT = 20;
-const QUESTION_OPTION_COUNT = 4;
+const QUESTION_OPTION_COUNT = new URLSearchParams(location.search).has("ordered") ? 4 : 5;
 const FULL_SCORE_TIME_MS = {
   music: 5000,
   description: 10000,
   frames: 7000
 };
 const QUESTION_TIME_LIMIT_MS = 45000;
+const TUTORIAL_RETURN_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000;
+const LAST_VISIT_COOKIE = "anime_after_hours_last_visit";
 const SPREADSHEET_EXPORT_URL = "https://docs.google.com/spreadsheets/d/11yaou7CKAUe7ebrMjAoYG-JCx-pWR0FT2YPAb63tXKs/export?format=csv";
 const QUESTION_SHEET_GID = "637749647";
 const ANIME_SHEET_GID = "644290686";
@@ -59,6 +61,24 @@ let quizLoaded = false;
 let initializationId = 0;
 let tutorialShown = false;
 let gameStarted = false;
+const shouldShowInitialTutorial = recordVisit();
+
+function recordVisit() {
+  const now = Date.now();
+  try {
+    const cookie = document.cookie.split("; ").find(item => item.startsWith(`${LAST_VISIT_COOKIE}=`));
+    const value = cookie && cookie.slice(LAST_VISIT_COOKIE.length + 1);
+    const lastVisit = value && /^\d+$/.test(value) ? Number(value) : NaN;
+    document.cookie = `${LAST_VISIT_COOKIE}=${now}; Max-Age=34560000; SameSite=Lax`;
+    if (!document.cookie.split("; ").includes(`${LAST_VISIT_COOKIE}=${now}`)) {
+      console.warn("Could not save the last visit cookie; the tutorial may appear again.");
+    }
+    return !Number.isSafeInteger(lastVisit) || lastVisit > now || now - lastVisit > TUTORIAL_RETURN_INTERVAL_MS;
+  } catch (error) {
+    console.warn("Could not access the last visit cookie; the tutorial will be shown.", error);
+    return true;
+  }
+}
 
 function parseCsv(text) {
   const rows = [];
@@ -154,7 +174,7 @@ function loadData(questionText, animeText) {
     showQuestion();
   } else {
     showDemo();
-    if (!instructionsDialog.open && !tutorialShown) showTutorial(true);
+    if (!instructionsDialog.open) beginAfterInstructions();
   }
 }
 
@@ -265,6 +285,7 @@ function setButton(label, symbol) {
 }
 
 function renderOptions(options) {
+  grid.style.setProperty("--option-count", QUESTION_OPTION_COUNT);
   grid.replaceChildren();
   options.forEach(id => {
     const card = document.createElement("button");
@@ -358,6 +379,20 @@ function setStartGate(visible) {
   pageShell.inert = visible;
 }
 
+function startGame() {
+  setStartGate(false);
+  startGameError.hidden = true;
+  gameStarted = true;
+  questionIndex = 0;
+  showQuestion();
+}
+
+function beginAfterInstructions() {
+  if (!quizLoaded || gameStarted || tutorialShown) return;
+  if (shouldShowInitialTutorial) showTutorial(true);
+  else startGame();
+}
+
 function showTutorial(isDemo = false) {
   tutorialShown = true;
   if (typeof introJs !== "function") {
@@ -384,7 +419,7 @@ function showTutorial(isDemo = false) {
     { element: modeBadge, intro: `${isDemo ? "This is a demo question. " : ""}This shows the type of clue for the current question.${stage === "started" ? " The timer keeps running while the tutorial is open." : ""}` },
     ...(!actionButton.hidden ? [{ element: actionButton, intro: actionIntro }] : []),
     { element: clueContent, intro: "The clue appears here after you start. The clues can be music, descriptions, or frames." },
-    { element: grid, intro: `${isDemo ? "These four anime are random examples. " : ""}The four options for each question are shown before it starts. We suggest reviewing them before you start. ${stage === "revealed" ? "The correct answers are highlighted here." : "Click every matching anime: <b>you can select more than one.</b>"}` },
+    { element: grid, intro: `${isDemo ? "These anime are random examples. " : ""}The options for each question are shown before it starts. We suggest reviewing them before you start. ${stage === "revealed" ? "The correct answers are highlighted here." : "Click every matching anime: <b>you can select more than one.</b>"}` },
     { element: notes, intro: "After you submit, some questions show additional information and links here to support the answer." },
     { element: document.querySelector(".score-controls"), intro: "Your score appears here. Finish the game at any time." }
   ];
@@ -392,9 +427,9 @@ function showTutorial(isDemo = false) {
     steps.push({ element: startGameButton, intro: "Finish the tutorial, then press Start game to begin the first question. Its anime options will be shown before you reveal its clue." });
   } else if (!actionButton.hidden) {
     steps.push({ element: actionButton, intro: {
-      loading: "Review the four anime names while the clue loads, then press Show clue when you are ready.",
-      "load-error": "Retry loading the clue, then review the four anime names before starting the question.",
-      ready: "Press Show clue to begin this question. The four anime on screen are its options, so review their names before you start.",
+      loading: "Review the anime names while the clue loads, then press Show clue when you are ready.",
+      "load-error": "Retry loading the clue, then review the anime names before starting the question.",
+      ready: "Press Show clue to begin this question. The anime on screen are its options, so review their names before you start.",
       started: "Choose all matching anime, then press Submit & reveal answer.",
       revealed: "Press Next question when you are ready to continue."
     }[stage] });
@@ -656,7 +691,7 @@ document.getElementById("restart-button").addEventListener("click", () => {
     if (gameStarted) showQuestion();
     else {
       showDemo();
-      if (!tutorialShown) showTutorial(true);
+      if (!instructionsDialog.open) beginAfterInstructions();
     }
   } else {
     initialize();
@@ -665,16 +700,10 @@ document.getElementById("restart-button").addEventListener("click", () => {
 
 document.getElementById("instructions-button").addEventListener("click", () => {
   instructionsDialog.close();
-  if (quizLoaded && !tutorialShown) showTutorial(true);
+  beginAfterInstructions();
 });
 tutorialButton.addEventListener("click", () => showTutorial());
-startGameButton.addEventListener("click", () => {
-  setStartGate(false);
-  startGameError.hidden = true;
-  gameStarted = true;
-  questionIndex = 0;
-  showQuestion();
-});
+startGameButton.addEventListener("click", startGame);
 [instructionsDialog, resultsDialog].forEach(dialog => {
   dialog.addEventListener("cancel", event => event.preventDefault());
 });
